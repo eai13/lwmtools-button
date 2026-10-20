@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+#ifdef LWMT_BUTTON_TRY_INLINE_CALLBACKS
+#define LWMT_BUTTON_CONST_CB const
+#else
+#define LWMT_BUTTON_CONST_CB
+#endif
+
 // Functionality support macros
 #define LWMT_BUTTON_SUPPORT_CLICK_DETECTION
 #define LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
@@ -10,14 +16,20 @@
 
 // Default settings values
 #define LWMT_BUTTON_SETTING_DEFAULT_DEBOUNCE_MS ((uint32_t)(10))
-#ifdef LWMT_BUTTON_SUPPORT_CLICK_DETECTION
+
+#if defined LWMT_BUTTON_SUPPORT_CLICK_DETECTION && !defined LWMT_BUTTON_SETTING_DEFAULT_CLICK_MAX_DURATION_MS
 #define LWMT_BUTTON_SETTING_DEFAULT_CLICK_MAX_DURATION_MS ((uint32_t)(500))
 #endif
-#ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
+
+#if defined LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION && !defined LWMT_BUTTON_SETTING_DEFAULT_DOUBLE_CLICK_GAP_MS
 #define LWMT_BUTTON_SETTING_DEFAULT_DOUBLE_CLICK_GAP_MS ((uint32_t)(300))
 #endif
-#ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+
+#if defined LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION && !defined LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_MS
 #define LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_MS ((uint32_t)(1500))
+#endif
+
+#if defined LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION && !defined LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_HOLD_MS
 #define LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_HOLD_MS ((uint32_t)(200))
 #endif
 
@@ -57,9 +69,9 @@ typedef void (*lwmt_button_event_cb)(lwmt_button_t *, lwmt_button_event_e);
 // Button structure
 struct lwmt_button_s
 {
-    lwmt_button_get_time_cb get_time_cb;
-    lwmt_button_read_pin_cb read_pin_cb;
-    lwmt_button_event_cb event_cb;
+    lwmt_button_get_time_cb LWMT_BUTTON_CONST_CB get_time_cb;
+    lwmt_button_read_pin_cb LWMT_BUTTON_CONST_CB read_pin_cb;
+    lwmt_button_event_cb LWMT_BUTTON_CONST_CB event_cb;
 
     lwmt_button_status_e stable_status;
     lwmt_button_status_e last_raw_status;
@@ -68,10 +80,17 @@ struct lwmt_button_s
     uint32_t press_start_ms;
     uint32_t release_start_ms;
 
-    uint8_t double_click_pending;
+    lwmt_button_fm_state_e fm_state;
 
+#ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
+    uint8_t double_click_pending;
+#endif
+
+#ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
     uint8_t long_press_started;
+    uint8_t long_press_hold_started;
     uint32_t long_press_start_ms;
+#endif
 
     uint32_t s_debounce_ms;
 #ifdef LWMT_BUTTON_SUPPORT_CLICK_DETECTION
