@@ -1,0 +1,39 @@
+:paths:
+  :source:
+    - src/**
+  :include:
+    - src/**
+  :test:
+    - test/**
+
+:project:
+  :build_root: ceedling-test-build/
+
+# Plugins
+:plugins:
+  :enabled:
+    - gcov
+    - command_hooks
+
+# Coverage report
+:gcov:
+  :utilities:
+    - gcovr
+  :reports:
+    - HtmlBasic
+    # - Text
+    # - Cobertura
+  :gcovr:
+    :html_medium_threshold: 75   # Порог "среднего" покрытия (желтый)
+    :html_high_threshold: 90     # Порог "высокого" покрытия (зеленый)
+    :html_title: "Отчет о покрытии тестами"
+
+# Static analyzis
+:command_hooks:
+  :post_test:
+    :executable: ../.venv/bin/xlizard
+    :arguments:
+      - '--html'
+      - '-o'
+      - 'complexity_report.html'
+      - 'src/'

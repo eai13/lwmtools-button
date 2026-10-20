@@ -1,0 +1,151 @@
+#include "lwmbutton.h"
+
+static inline lwmt_button_status_e status_from_pinstate(lwmt_button_t *h)
+{
+    return (h->read_pin_cb()) ? (LWMT_BUTTON_STATUS_PRESSED) : (LWMT_BUTTON_STATUS_RELEASED);
+}
+
+static inline void emit(lwmt_button_t *h, lwmt_button_event_e event)
+{
+    if (h->event_cb)
+    {
+        h->event_cb(h, event);
+    }
+}
+
+lwmt_button_t lwmt_button_init_d(lwmt_button_read_pin_cb read_pin_cb,
+                                 lwmt_button_event_cb event_cb,
+                                 lwmt_button_get_time_cb get_time_cb)
+{
+    return lwmt_button_init(read_pin_cb, event_cb, get_time_cb,
+                            LWMT_BUTTON_SETTING_DEFAULT_DEBOUNCE_MS,
+                            LWMT_BUTTON_SETTING_DEFAULT_CLICK_MAX_DURATION_MS,
+                            LWMT_BUTTON_SETTING_DEFAULT_DOUBLE_CLICK_GAP_MS,
+                            LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_MS,
+                            LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_HOLD_MS);
+}
+
+lwmt_button_t lwmt_button_init(lwmt_button_read_pin_cb read_pin_cb,
+                               lwmt_button_event_cb event_cb,
+                               lwmt_button_get_time_cb get_time_cb,
+                               uint32_t debounce_ms,
+                               uint32_t click_max_duration_ms,
+                               uint32_t double_click_gap_ms,
+                               uint32_t long_press_ms,
+                               uint32_t long_press_hold_ms)
+{
+    lwmt_button_t h;
+
+    h.read_pin_cb = read_pin_cb;
+    h.event_cb = event_cb;
+    h.get_time_cb = get_time_cb;
+
+    h.s_debounce_ms = debounce_ms;
+    h.s_click_max_duration_ms = click_max_duration_ms;
+    h.s_double_click_gap_ms = double_click_gap_ms;
+    h.s_long_press_ms = long_press_ms;
+    h.s_long_press_hold_ms = long_press_hold_ms;
+
+    h.stable_status = status_from_pinstate(&h);
+    h.last_raw_status = h.stable_status;
+    h.last_raw_status_change_ms = 0;
+
+    h.press_start_ms = 0;
+    h.release_start_ms = 0;
+
+    h.double_click_pending = 0;
+
+    h.long_press_started = 0;
+    h.long_press_start_ms = 0;
+
+    return h;
+}
+
+lwmt_button_status_e lwmt_button_status(lwmt_button_t const *h)
+{
+    return h->stable_status;
+}
+
+void lwmt_button_process(lwmt_button_t *h)
+{
+    uint32_t now_ms = h->get_time_cb();
+
+    lwmt_button_status_e raw_status = status_from_pinstate(h);
+
+    // Debouncing, drop status change if button status changed in h->s_debounce_ms
+    if (raw_status != h->last_raw_status)
+    {
+        h->last_raw_status = raw_status;
+        h->last_raw_status_change_ms = now_ms;
+    }
+
+    // Detect stable status change
+    if (((now_ms - h->last_raw_status_change_ms) >= h->s_debounce_ms) &&
+        (raw_status != h->stable_status))
+    {
+        h->stable_status = raw_status;
+
+        switch (raw_status)
+        {
+        case (LWMT_BUTTON_STATUS_PRESSED):
+        {
+            h->press_start_ms = now_ms;
+            h->long_press_started = 0;
+            emit(h, LWMT_BUTTON_EVENT_DOWN);
+            break;
+        }
+        case (LWMT_BUTTON_STATUS_RELEASED):
+        {
+            uint32_t press_len = now_ms - h->press_start_ms;
+            emit(h, LWMT_BUTTON_EVENT_UP);
+
+            if (h->long_press_started)
+            {
+                emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_END);
+                h->double_click_pending = 0;
+            }
+            else if (press_len <= h->s_click_max_duration_ms)
+            {
+                if (h->double_click_pending)
+                {
+                    emit(h, LWMT_BUTTON_EVENT_DOUBLE_CLICK);
+                    h->double_click_pending = 0;
+                }
+                else
+                {
+                    h->double_click_pending = 1;
+                    h->release_start_ms = now_ms;
+                }
+            }
+            break;
+        }
+        }
+    }
+
+    if (h->stable_status)
+    {
+        uint32_t hold_time = now_ms - h->press_start_ms;
+        if (!h->long_press_started && hold_time >= h->s_long_press_ms)
+        {
+            h->long_press_started = 1;
+            h->long_press_start_ms = now_ms;
+            h->double_click_pending = 0;
+            emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_START);
+        }
+        else if ((h->long_press_started) &&
+                 ((now_ms - h->long_press_start_ms) >= h->s_long_press_hold_ms))
+        {
+            h->long_press_start_ms = now_ms;
+            emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_HOLD);
+        }
+    }
+
+    // If no second click obtained
+    if (h->double_click_pending &&
+        (h->stable_status == LWMT_BUTTON_STATUS_RELEASED) &&
+        ((now_ms - h->release_start_ms) > h->s_double_click_gap_ms))
+    {
+        h->double_click_pending = 0;
+        emit(h, LWMT_BUTTON_EVENT_CLICK);
+    }
+}
