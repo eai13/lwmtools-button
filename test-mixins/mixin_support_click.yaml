@@ -1,0 +1,6 @@
+:project:
+  :build_root: ceedling-test-build/click-support/
+:defines:
+  :test:
+    '*':
+      - LWMT_BUTTON_SUPPORT_CLICK_DETECTION

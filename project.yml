@@ -13,7 +13,7 @@
 :plugins:
   :enabled:
     - gcov
-    - command_hooks
+    # - command_hooks
 
 # Coverage report
 :gcov:
@@ -29,11 +29,11 @@
     :html_title: "Отчет о покрытии тестами"
 
 # Static analyzis
-:command_hooks:
-  :post_test:
-    :executable: ../.venv/bin/xlizard
-    :arguments:
-      - '--html'
-      - '-o'
-      - 'complexity_report.html'
-      - 'src/'
+# :command_hooks:
+#   :post_test:
+#     :executable: ../.venv/bin/xlizard
+#     :arguments:
+#       - '--html'
+#       - '-o'
+#       - 'complexity_report.html'
+#       - 'src/'

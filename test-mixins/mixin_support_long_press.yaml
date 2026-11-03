@@ -1,0 +1,6 @@
+:project:
+  :build_root: ceedling-test-build/long-press-support/
+:defines:
+  :test:
+    '*':
+      - LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION

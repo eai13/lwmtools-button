@@ -10,9 +10,9 @@
 #endif
 
 // Functionality support macros
-#define LWMT_BUTTON_SUPPORT_CLICK_DETECTION
-#define LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
-#define LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+// #define LWMT_BUTTON_SUPPORT_CLICK_DETECTION
+// #define LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
+// #define LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
 
 // Default settings values
 #define LWMT_BUTTON_SETTING_DEFAULT_DEBOUNCE_MS ((uint32_t)(10))
@@ -73,14 +73,13 @@ struct lwmt_button_s
     lwmt_button_read_pin_cb LWMT_BUTTON_CONST_CB read_pin_cb;
     lwmt_button_event_cb LWMT_BUTTON_CONST_CB event_cb;
 
+    // State description variables
     lwmt_button_status_e stable_status;
     lwmt_button_status_e last_raw_status;
     uint32_t last_raw_status_change_ms;
 
     uint32_t press_start_ms;
     uint32_t release_start_ms;
-
-    lwmt_button_fm_state_e fm_state;
 
 #ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
     uint8_t double_click_pending;
@@ -92,6 +91,7 @@ struct lwmt_button_s
     uint32_t long_press_start_ms;
 #endif
 
+    // Settings
     uint32_t s_debounce_ms;
 #ifdef LWMT_BUTTON_SUPPORT_CLICK_DETECTION
     uint32_t s_click_max_duration_ms;
