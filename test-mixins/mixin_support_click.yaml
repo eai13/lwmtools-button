@@ -1,6 +1,10 @@
 :project:
-  :build_root: ceedling-test-build/click-support/
+  :build_root: ceedling-test-build/support_click/
 :defines:
   :test:
     '*':
       - LWMT_BUTTON_SUPPORT_CLICK_DETECTION
+
+:gcov:
+  :gcovr:
+    :html_title: "Click Functionality Coverage Report"

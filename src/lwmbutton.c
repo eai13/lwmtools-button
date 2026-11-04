@@ -120,20 +120,21 @@ void lwmt_button_process(lwmt_button_t *h)
     // Button debounce status updated
     if (status_updated)
     {
-        switch (raw_status)
+        if (raw_status == LWMT_BUTTON_STATUS_PRESSED) // From released to pressed
         {
-        case LWMT_BUTTON_STATUS_PRESSED: // From released to pressed
-        {
+#ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+            h->long_press_started = 0;
+            h->long_press_hold_started = 0;
+#endif
             h->press_start_ms = now_ms;
             emit(h, LWMT_BUTTON_EVENT_DOWN);
-            break;
         }
-        case LWMT_BUTTON_STATUS_RELEASED: // From pressed to released
+        else // From pressed to released
         {
             h->release_start_ms = now_ms;
             emit(h, LWMT_BUTTON_EVENT_UP);
 #ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
-            if (h->long_press_started || h->long_press_hold_started)
+            if (h->long_press_started)
             {
                 h->long_press_hold_started = 0;
                 h->long_press_started = 0;
@@ -163,123 +164,36 @@ void lwmt_button_process(lwmt_button_t *h)
                 }
 #endif
             }
-            break;
-        }
-        default:
-        {
-            break;
-        }
         }
     }
     else
     {
-        switch (raw_status)
-        {
-        case LWMT_BUTTON_STATUS_PRESSED:
+        if (raw_status == LWMT_BUTTON_STATUS_PRESSED)
         {
 #ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
             uint32_t hold_time = now_ms - h->press_start_ms;
             if (!h->long_press_started && (hold_time >= h->s_long_press_ms))
             {
                 h->long_press_started = 1;
+                h->long_press_start_ms = now_ms;
                 emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_START);
             }
-            else if (!h->long_press_hold_started && (hold_time >= h->s_long_press_hold_ms))
+            else if (h->long_press_started && !h->long_press_hold_started && ((now_ms - h->long_press_start_ms) >= h->s_long_press_hold_ms))
             {
                 h->long_press_hold_started = 1;
                 emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_HOLD);
             }
 #endif
-            break;
         }
-        case LWMT_BUTTON_STATUS_RELEASED:
+        else
         {
 #ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
             uint32_t since_last_release = now_ms - h->release_start_ms;
-            if (h->double_click_pending && (since_last_release > h->s_double_click_gap_ms))
+            if (since_last_release > h->s_double_click_gap_ms)
             {
                 h->double_click_pending = 0;
             }
 #endif
-            break;
-        }
-        default:
-        {
-            break;
-        }
         }
     }
-
-    // // Detect stable status change
-    // if (((now_ms - h->last_raw_status_change_ms) >= h->s_debounce_ms) &&
-    //     (raw_status != h->stable_status))
-    // {
-    //     h->stable_status = raw_status;
-
-    //     switch (raw_status)
-    //     {
-    //     case (LWMT_BUTTON_STATUS_PRESSED):
-    //     {
-    //         h->press_start_ms = now_ms;
-    //         h->long_press_started = 0;
-    //         emit(h, LWMT_BUTTON_EVENT_DOWN);
-    //         break;
-    //     }
-    //     case (LWMT_BUTTON_STATUS_RELEASED):
-    //     {
-    //         uint32_t press_len = now_ms - h->press_start_ms;
-
-    //         if (h->long_press_started)
-    //         {
-    //             emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_END);
-    //             h->double_click_pending = 0;
-    //         }
-    //         else if (press_len <= h->s_click_max_duration_ms)
-    //         {
-    //             if (h->double_click_pending)
-    //             {
-    //                 emit(h, LWMT_BUTTON_EVENT_DOUBLE_CLICK);
-    //                 h->double_click_pending = 0;
-    //             }
-    //             else
-    //             {
-    //                 h->double_click_pending = 1;
-    //                 h->release_start_ms = now_ms;
-    //             }
-    //         }
-    //         else
-    //         {
-    //             emit(h, LWMT_BUTTON_EVENT_UP);
-    //         }
-    //         break;
-    //     }
-    //     }
-    // }
-
-    // if (h->stable_status == LWMT_BUTTON_STATUS_PRESSED)
-    // {
-    //     uint32_t hold_time = now_ms - h->press_start_ms;
-    //     if (!h->long_press_started && hold_time >= h->s_long_press_ms)
-    //     {
-    //         h->long_press_started = 1;
-    //         h->long_press_start_ms = now_ms;
-    //         h->double_click_pending = 0;
-    //         emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_START);
-    //     }
-    //     else if ((h->long_press_started) &&
-    //              ((now_ms - h->long_press_start_ms) >= h->s_long_press_hold_ms))
-    //     {
-    //         h->long_press_start_ms = now_ms;
-    //         emit(h, LWMT_BUTTON_EVENT_LONG_PRESS_HOLD);
-    //     }
-    // }
-
-    // // If no second click obtained
-    // if (h->double_click_pending &&
-    //     (h->stable_status == LWMT_BUTTON_STATUS_RELEASED) &&
-    //     ((now_ms - h->release_start_ms) > h->s_double_click_gap_ms))
-    // {
-    //     h->double_click_pending = 0;
-    //     emit(h, LWMT_BUTTON_EVENT_CLICK);
-    // }
 }

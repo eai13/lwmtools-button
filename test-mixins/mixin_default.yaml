@@ -1,2 +1,6 @@
 :project:
   :build_root: ceedling-test-build/default/
+
+:gcov:
+  :gcovr:
+    :html_title: "Default Functionality Coverage Report"

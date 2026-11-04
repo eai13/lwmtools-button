@@ -1,7 +1,11 @@
 :project:
-  :build_root: ceedling-test-build/double-click-support/
+  :build_root: ceedling-test-build/support_double_click/
 :defines:
   :test:
     '*':
       - LWMT_BUTTON_SUPPORT_CLICK_DETECTION
       - LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
+
+:gcov:
+  :gcovr:
+    :html_title: "Double Click Functionality Coverage Report"

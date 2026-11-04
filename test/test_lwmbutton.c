@@ -59,15 +59,20 @@ void test_lwmbutton_init(void)
     TEST_ASSERT_EQUAL(button_1.read_pin_cb, button_2.read_pin_cb);
     TEST_ASSERT_EQUAL(button_1.event_cb, button_2.event_cb);
     TEST_ASSERT_EQUAL(button_1.s_debounce_ms, button_2.s_debounce_ms);
+    TEST_ASSERT_EQUAL(button_1.s_debounce_ms, LWMT_BUTTON_SETTING_DEFAULT_DEBOUNCE_MS);
 #ifdef LWMT_BUTTON_SUPPORT_CLICK_DETECTION
     TEST_ASSERT_EQUAL(button_1.s_click_max_duration_ms, button_2.s_click_max_duration_ms);
+    TEST_ASSERT_EQUAL(button_1.s_click_max_duration_ms, LWMT_BUTTON_SETTING_DEFAULT_CLICK_MAX_DURATION_MS);
 #endif
 #ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
     TEST_ASSERT_EQUAL(button_1.s_double_click_gap_ms, button_2.s_double_click_gap_ms);
+    TEST_ASSERT_EQUAL(button_1.s_double_click_gap_ms, LWMT_BUTTON_SETTING_DEFAULT_DOUBLE_CLICK_GAP_MS);
 #endif
 #ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
     TEST_ASSERT_EQUAL(button_1.s_long_press_hold_ms, button_2.s_long_press_hold_ms);
     TEST_ASSERT_EQUAL(button_1.s_long_press_ms, button_2.s_long_press_ms);
+    TEST_ASSERT_EQUAL(button_1.s_long_press_ms, LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_MS);
+    TEST_ASSERT_EQUAL(button_1.s_long_press_hold_ms, LWMT_BUTTON_SETTING_DEFAULT_LONG_PRESS_HOLD_MS);
 #endif
 }
 
@@ -88,10 +93,10 @@ void test_lwmbutton_press_release_debounce(void)
     TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_NONE);
 
     reset_events();
-    time = 10;
+    time += 1;
     pin_state = 1;
     lwmt_button_process(&b);
-    TEST_ASSERT_EQUAL(b.last_raw_status_change_ms, 10);
+    TEST_ASSERT_EQUAL(b.last_raw_status_change_ms, time);
     TEST_ASSERT_EQUAL(b.last_raw_status, LWMT_BUTTON_STATUS_PRESSED);
     TEST_ASSERT_EQUAL(b.stable_status, LWMT_BUTTON_STATUS_RELEASED);
     TEST_ASSERT_EQUAL(event_updated_times, 0);
@@ -101,11 +106,16 @@ void test_lwmbutton_press_release_debounce(void)
     time += b.s_debounce_ms + 1;
     pin_state = 1;
     lwmt_button_process(&b);
-    TEST_ASSERT_EQUAL(b.last_raw_status_change_ms, 10);
     TEST_ASSERT_EQUAL(b.last_raw_status, LWMT_BUTTON_STATUS_PRESSED);
     TEST_ASSERT_EQUAL(b.stable_status, LWMT_BUTTON_STATUS_PRESSED);
     TEST_ASSERT_EQUAL(event_updated_times, 1);
     TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_DOWN);
+
+    reset_events();
+    time += b.s_debounce_ms + 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+    TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_NONE);
 
     reset_events();
     time += 1;
@@ -146,6 +156,23 @@ void test_lwmbutton_press_release_debounce(void)
     TEST_ASSERT_EQUAL(b.stable_status, LWMT_BUTTON_STATUS_RELEASED);
     TEST_ASSERT_EQUAL(event_updated_times, 1);
     TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_UP);
+}
+
+void test_lwmbutton_no_event(void)
+{
+    reset_all();
+
+    lwmt_button_t b = lwmt_button_init_d(read_pin_cb, NULL, get_time_cb);
+
+    pin_state = 1;
+    time += 1;
+    lwmt_button_process(&b);
+
+    time += b.s_debounce_ms + 1;
+    lwmt_button_process(&b);
+
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+    TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_NONE);
 }
 
 void test_lwmbutton_press_release_time(void)
@@ -237,6 +264,7 @@ void test_lwmbutton_click(void)
     lwmt_button_process(&b);
     TEST_ASSERT_EQUAL(event_updated_times, 1);
     TEST_ASSERT_EQUAL(current_event, LWMT_BUTTON_EVENT_DOWN);
+    TEST_ASSERT_EQUAL(b.double_click_pending, 1);
 
     reset_events();
     time += 1;
@@ -249,6 +277,159 @@ void test_lwmbutton_click(void)
     TEST_ASSERT_EQUAL(event_updated_times, 2);
     TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_UP);
     TEST_ASSERT_EQUAL(events_history[1], LWMT_BUTTON_EVENT_DOUBLE_CLICK);
+    TEST_ASSERT_EQUAL(b.double_click_pending, 0);
 #endif
+#endif
+}
+
+void test_lwmbutton_doubleclick_fail(void)
+{
+#ifdef LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
+    reset_all();
+
+    lwmt_button_t b = create_default_button();
+
+    time += 1;
+    pin_state = 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    reset_events();
+    time += b.s_debounce_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_DOWN);
+
+    reset_events();
+    time += 1;
+    pin_state = 0;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    reset_events();
+    time += b.s_click_max_duration_ms - 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 2);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_UP);
+    TEST_ASSERT_EQUAL(events_history[1], LWMT_BUTTON_EVENT_CLICK);
+
+    reset_events();
+    time += 1;
+    pin_state = 1;
+    lwmt_button_process(&b);
+
+    reset_events();
+    time += b.s_double_click_gap_ms + 10;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_DOWN);
+
+    reset_events();
+    time += 1;
+    pin_state = 0;
+    lwmt_button_process(&b);
+
+    reset_events();
+    time += b.s_click_max_duration_ms - 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 2);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_UP);
+    TEST_ASSERT_EQUAL(events_history[1], LWMT_BUTTON_EVENT_CLICK);
+#endif
+}
+
+void test_lwmbutton_longpress(void)
+{
+#ifdef LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+    reset_all();
+    lwmt_button_t b = create_default_button();
+
+    // Start PRESS debounce
+    time += 1;
+    pin_state = 1;
+    lwmt_button_process(&b);
+
+    // PRESS event
+    reset_events();
+    time += b.s_debounce_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_DOWN);
+
+    // LONG_PRESS_START event
+    reset_events();
+    time += b.s_long_press_ms + 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_LONG_PRESS_START);
+
+    // Start RELEASE debounce
+    reset_events();
+    time += 1;
+    pin_state = 0;
+    lwmt_button_process(&b);
+
+    // RELEASE + LONG_PRESS_END events
+    reset_events();
+    time += b.s_debounce_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 2);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_UP);
+    TEST_ASSERT_EQUAL(events_history[1], LWMT_BUTTON_EVENT_LONG_PRESS_END);
+
+    // PRESS event
+    reset_events();
+    time += 1;
+    pin_state = 1;
+    lwmt_button_process(&b);
+
+    reset_events();
+    time += b.s_debounce_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_DOWN);
+
+    // LONG_PRESS_START event
+    reset_events();
+    time += b.s_long_press_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_LONG_PRESS_START);
+
+    reset_events();
+    time += 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    // LONG_PRESS_HOLD event
+    reset_events();
+    time += b.s_long_press_hold_ms - 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 1);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_LONG_PRESS_HOLD);
+
+    reset_events();
+    time += 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    reset_events();
+    time += 1;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    // RELEASE + LONG_PRESS_END event
+    reset_events();
+    time += 1;
+    pin_state = 0;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 0);
+
+    reset_events();
+    time += b.s_debounce_ms;
+    lwmt_button_process(&b);
+    TEST_ASSERT_EQUAL(event_updated_times, 2);
+    TEST_ASSERT_EQUAL(events_history[0], LWMT_BUTTON_EVENT_UP);
+    TEST_ASSERT_EQUAL(events_history[1], LWMT_BUTTON_EVENT_LONG_PRESS_END);
 #endif
 }

@@ -1,6 +1,10 @@
 :project:
-  :build_root: ceedling-test-build/long-press-support/
+  :build_root: ceedling-test-build/support_long_press/
 :defines:
   :test:
     '*':
       - LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+
+:gcov:
+  :gcovr:
+    :html_title: "Long Press Functionality Coverage Report"

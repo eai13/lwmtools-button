@@ -1,8 +1,12 @@
 :project:
-  :build_root: ceedling-test-build/full-support/
+  :build_root: ceedling-test-build/full_support/
 :defines:
   :test:
     '*':
       - LWMT_BUTTON_SUPPORT_CLICK_DETECTION
       - LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION
       - LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION
+
+:gcov:
+  :gcovr:
+    :html_title: "Full Functionality Coverage Report"

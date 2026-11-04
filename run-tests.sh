@@ -1,43 +1,39 @@
 #!/bin/bash
 
-CEEDLING_FLAGS="-v normal"
+BUILD_DIR="ceedling-test-build"
+if [ -d ${BUILD_DIR} ]; then
+    echo "Cleanup build dir"
+    rm -r ${BUILD_DIR}
+fi
 
-# No functionality macros
-echo ""
-echo "====================="
-echo "== TEST: No Macros =="
-echo "====================="
-echo ""
-ceedling test:all --mixin test-mixins/mixin_default.yaml ${CEEDLING_FLAGS}
+REPORTS_DIR="gcov-reports"
+if [ -d ${REPORTS_DIR} ]; then
+    echo "Cleanup gcov reports dir"
+    rm -r ${REPORTS_DIR}
+fi
+mkdir -p ${REPORTS_DIR}
 
-# All functionality macros
-echo ""
-echo "======================"
-echo "== TEST: All Macros =="
-echo "======================"
-echo ""
-ceedling test:all --mixin test-mixins/mixin_full_support.yaml ${CEEDLING_FLAGS}
+MIXIN="--mixin"
+VERBOSITY="-v $1"
+CEEDLING_GCOV="ceedling clobber gcov:all"
+CEEDLING_TEST="ceedling clobber test:all" 
 
-# Click support macros
-echo ""
-echo "==============================================="
-echo "== TEST: LWMT_BUTTON_SUPPORT_CLICK_DETECTION =="
-echo "==============================================="
-echo ""
-ceedling test:all --mixin test-mixins/mixin_support_click.yaml ${CEEDLING_FLAGS}
+for f in test-mixins/*.yaml; do
+    echo ""
+    echo "=================================="
+    echo ${f}
+    echo "============== TEST =============="
+    ${CEEDLING_GCOV} ${MIXIN} ${f} ${VERBOSITY}
+    echo "=================================="
+    echo ""
 
-# Double click support macros
-echo ""
-echo "============================================================================================"
-echo "== TEST: LWMT_BUTTON_SUPPORT_CLICK_DETECTION + LWMT_BUTTON_SUPPORT_DOUBLE_CLICK_DETECTION =="
-echo "============================================================================================"
-echo ""
-ceedling test:all --mixin test-mixins/mixin_support_double_click.yaml ${CEEDLING_FLAGS}
+    bname=$(basename "$f" .yaml)
+    variant=$(echo $bname | sed 's/^mixin_//')
+    report_dir=${REPORTS_DIR}/${bname}
 
-# Long press support macros
-echo ""
-echo "===================================================="
-echo "== TEST: LWMT_BUTTON_SUPPORT_LONG_PRESS_DETECTION =="
-echo "===================================================="
-echo ""
-ceedling test:all --mixin test-mixins/mixin_support_long_press.yaml ${CEEDLING_FLAGS}
+    mkdir ${report_dir}
+    mv ${BUILD_DIR}/${variant}/artifacts/gcov/gcovr/* ${report_dir}/
+
+    rm -r ${BUILD_DIR}
+done
+

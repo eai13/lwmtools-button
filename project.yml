@@ -20,13 +20,16 @@
   :utilities:
     - gcovr
   :reports:
-    - HtmlBasic
-    # - Text
-    # - Cobertura
+    - HtmlDetailed
+    - Text
+    - Cobertura
   :gcovr:
-    :html_medium_threshold: 75   # Порог "среднего" покрытия (желтый)
-    :html_high_threshold: 90     # Порог "высокого" покрытия (зеленый)
-    :html_title: "Отчет о покрытии тестами"
+    :html_medium_threshold: 75
+    :html_high_threshold: 90
+    :html_title: "coverage report"
+    :report_exclude:
+      - ".*/unity\\.c$"
+      - ".*/cmock\\.c$"
 
 # Static analyzis
 # :command_hooks:
