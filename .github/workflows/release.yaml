@@ -27,6 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get install -y ruby ruby-dev build-essential
           gem install ceedling
           sudo apt-get install -y gcovr
 
