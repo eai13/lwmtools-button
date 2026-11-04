@@ -25,12 +25,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Если Ceedling уже стоит в образе раннера — этот шаг не нужен.
-      # Если нет, раскомментируйте и настройте под свой образ.
-      # - name: Install dependencies
-      #   run: |
-      #     gem install ceedling
-      #     sudo apt-get install -y gcovr
+      - name: Install dependencies
+        run: |
+          gem install ceedling
+          sudo apt-get install -y gcovr
 
       - name: Run tests and generate coverage
         run: |
