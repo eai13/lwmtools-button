@@ -1,0 +1,85 @@
+name: LWMTools-Button Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Если Ceedling уже стоит в образе раннера — этот шаг не нужен.
+      # Если нет, раскомментируйте и настройте под свой образ.
+      # - name: Install dependencies
+      #   run: |
+      #     gem install ceedling
+      #     sudo apt-get install -y gcovr
+
+      - name: Run tests and generate coverage
+        run: |
+          chmod +x ./run-tests.sh
+          ./run-tests.sh
+
+      - name: Verify gcov-reports structure
+        run: |
+          echo "Содержимое gcov-reports:"
+          find gcov-reports -maxdepth 2 -type d | sort
+
+      - name: Prepare Pages content
+        run: |
+          TAG="${{ github.ref_name }}"
+          mkdir -p "pages/$TAG/coverage"
+
+          # Копируем все подпапки миксинов в coverage/<tag>/<mixin>/
+          for dir in gcov-reports/*/; do
+            mixin=$(basename "$dir")
+            mkdir -p "pages/$TAG/coverage/$mixin"
+            cp -r "$dir." "pages/$TAG/coverage/$mixin/"
+          done
+
+          # Добавляем .nojekyll, чтобы GitHub Pages не пытался
+          # обрабатывать файлы через Jekyll.
+          touch "pages/.nojekyll"
+
+          # Создаём корневую страницу со ссылками на все миксины.
+          {
+            echo "<!DOCTYPE html>"
+            echo "<html><head><meta charset='utf-8'>"
+            echo "<title>Coverage $TAG</title></head><body>"
+            echo "<h1>Coverage for tag $TAG</h1><ul>"
+            for dir in gcov-reports/*/; do
+              mixin=$(basename "$dir")
+              echo "<li><a href='./$mixin/index.html'>$mixin</a></li>"
+            done
+            echo "</ul></body></html>"
+          } > "pages/$TAG/coverage/index.html"
+
+          echo "Итоговая структура pages:"
+          find pages -maxdepth 4 | sort | head -50
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+  
