@@ -34,7 +34,7 @@ jobs:
       - name: Run tests and generate coverage
         run: |
           chmod +x ./run-tests.sh
-          ./run-tests.sh
+          ./run-tests.sh normal
 
       - name: Verify gcov-reports structure
         run: |
