@@ -33,7 +33,6 @@ for f in test-mixins/*.yaml; do
 
     mkdir ${report_dir}
     mv ${BUILD_DIR}/${variant}/artifacts/gcov/gcovr/* ${report_dir}/
-
     rm -r ${BUILD_DIR}
 done
 
